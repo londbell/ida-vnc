@@ -56,10 +56,9 @@ jobs:
 
           echo "Downloading IDA Pro installer..."
           if [ -n "$IDA_DOWNLOAD_HEADERS" ]; then
-            # IDA_DOWNLOAD_HEADERS should be newline-separated "Header: value" pairs
-            curl -fsSL -H "$IDA_DOWNLOAD_HEADERS" -o "$INSTALLER" "$IDA_DOWNLOAD_URL"
+            curl -L --progress-bar -H "$IDA_DOWNLOAD_HEADERS" -o "$INSTALLER" "$IDA_DOWNLOAD_URL"
           else
-            curl -fsSL -o "$INSTALLER" "$IDA_DOWNLOAD_URL"
+            curl -L --progress-bar -o "$INSTALLER" "$IDA_DOWNLOAD_URL"
           fi
 
           chmod +x "$INSTALLER"
