@@ -42,6 +42,7 @@ build:
 ## run — Start the container locally
 run:
 	@echo "→ Starting container $(CONTAINER_NAME) ..."
+	@docker volume create ida-config 2>/dev/null || true
 	@docker run -d \
 		--name $(CONTAINER_NAME) \
 		--hostname ida-vnc \
@@ -49,8 +50,9 @@ run:
 		-p $(MCP_PORT):8745 \
 		-e VNC_PW=$(VNC_PASSWORD) \
 		-e HOME=/home/kasm-user \
-		-v $(WORKSPACE_PATH):/home/kasm-user/workspace \
-		-v $(IDA_HEXLIC_PATH):/home/kasm-user/.idapro/ida.hexlic:ro \
+		-v $(PWD)/workspace:/home/kasm-user/workspace \
+		-v $(PWD)/ida.hexlic:/home/kasm-user/.idapro/ida.hexlic:ro \
+		-v ida-config:/home/kasm-user/.idapro \
 		$(IMAGE_TAG) \
 		|| echo "Container already running or failed to start. Check with 'make logs'"
 
@@ -58,6 +60,7 @@ run:
 stop:
 	@echo "→ Stopping container $(CONTAINER_NAME) ..."
 	-docker stop $(CONTAINER_NAME) && docker rm $(CONTAINER_NAME)
+	-docker volume rm ida-config 2>/dev/null || true
 
 ## restart — Stop + Run
 restart: stop run

@@ -1,6 +1,27 @@
 # ────────────────────────────────────────────────────────
 # IDA Pro 9.4 + KasmVNC Linux Workspace Image
 # ────────────────────────────────────────────────────────
+
+# ── Stage 1: Install IDA Pro ─────────────────────────
+FROM kasmweb/core-ubuntu-jammy:1.14.0 AS builder
+
+USER root
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libxcb-cursor0 \
+        libxcb-icccm4 \
+        libxkbcommon-x11-0 \
+        libxcb-keysyms1 \
+        libxcb-util1 && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY downloads/ida-pro_94_x64linux.run /tmp/ida.run
+
+RUN chmod +x /tmp/ida.run && \
+    /tmp/ida.run --mode unattended --prefix /opt/ida-pro && \
+    rm -f /tmp/ida.run
+
+# ── Stage 2: Final image ──────────────────────────────
 FROM kasmweb/core-ubuntu-jammy:1.14.0
 
 LABEL description="IDA Pro 9.4 inside KasmVNC-powered XFCE desktop"
@@ -16,19 +37,11 @@ RUN apt-get update && \
         libxcb-util1 && \
     rm -rf /var/lib/apt/lists/*
 
-# ── Install IDA Pro ───────────────────────────────────
-# Installer must be staged at build/downloads/ before docker build
-USER root
-
-COPY downloads/ida-pro_94_x64linux.run /tmp/ida.run
-
-RUN chmod +x /tmp/ida.run && \
-    /tmp/ida.run --mode unattended --prefix /opt/ida-pro && \
-    rm -f /tmp/ida.run && \
-    chown -R 1000:1000 /opt/ida-pro
+# ── Copy installed IDA Pro from builder ───────────────
+COPY --from=builder /opt/ida-pro /opt/ida-pro
+RUN chown -R 1000:1000 /opt/ida-pro
 
 # ── Install Python 3.11+ for ida-pro-mcp ──────────────
-# ida-pro-mcp requires Python 3.11 or higher. Ubuntu 22.04 ships 3.10.
 USER root
 RUN apt-get update && \
     apt-get install -y --no-install-recommends software-properties-common && \
@@ -46,7 +59,6 @@ RUN /opt/ida-pro/idapyswitch -s /usr/lib/x86_64-linux-gnu/libpython3.11.so.1.0
 
 # ── Install uv and ida-pro-mcp ────────────────────────
 USER root
-# Use root's HOME so pip/uv don't create root-owned files under /home/kasm-user
 ENV HOME=/root
 RUN python3.11 -m ensurepip && \
     python3.11 -m pip install --upgrade pip && \
@@ -76,11 +88,16 @@ COPY --chown=1000:1000 resources/custom_startup.sh /dockerstartup/
 RUN chmod +x /dockerstartup/custom_startup.sh
 
 # ── Ensure workspace and config directories exist ─────
-RUN mkdir -p /home/kasm-user/.idapro /home/kasm-user/workspace && \
-    chown -R 1000:1000 /home/kasm-user/.idapro /home/kasm-user/workspace
+RUN mkdir -p /home/kasm-user/workspace && \
+    chown -R 1000:1000 /home/kasm-user/workspace && \
+    mkdir -p /opt/ida-license
 
 # ── Final State ────────────────────────────────────────
 USER 1000
 WORKDIR /home/kasm-user/workspace
 
 EXPOSE 6901 8745
+
+# ── Persistent volumes ─────────────────────────────────
+VOLUME ["/home/kasm-user/.idapro"]
+VOLUME ["/home/kasm-user/workspace"]

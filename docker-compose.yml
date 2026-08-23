@@ -16,5 +16,12 @@ services:
       - HOME=/home/kasm-user
 
     volumes:
-      - ${WORKSPACE_HOST_PATH:-~/IDA-workspace}:/home/kasm-user/workspace
-      - ${IDA_HEXLIC_HOST_PATH:-~/ida.hexlic}:/home/kasm-user/.idapro/ida.hexlic:ro
+      # 工作目录
+      - ./workspace:/home/kasm-user/workspace
+      # 许可证文件（只读），直接放在 IDA 默认读取位置
+      - ./ida.hexlic:/home/kasm-user/.idapro/ida.hexlic:ro
+      # IDA 用户配置持久化（插件、主题等）
+      - ida-config:/home/kasm-user/.idapro
+
+volumes:
+  ida-config:
