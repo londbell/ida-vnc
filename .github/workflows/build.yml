@@ -61,8 +61,10 @@ jobs:
             curl -L --progress-bar -o "$INSTALLER" "$IDA_DOWNLOAD_URL"
           fi
 
-          chmod +x "$INSTALLER"
           echo "Installer downloaded: $(du -h "$INSTALLER" | cut -f1)"
+          file "$INSTALLER"
+          head -c 200 "$INSTALLER" | cat -v | head -5
+          chmod +x "$INSTALLER"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
