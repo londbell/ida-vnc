@@ -13,6 +13,7 @@ services:
 
     environment:
       - VNC_PW=${VNC_PASSWORD:-changeme}
+      - MCP_HOST=0.0.0.0
       - HOME=/home/kasm-user
 
     volumes:
