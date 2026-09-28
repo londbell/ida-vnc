@@ -7,8 +7,14 @@ LABEL description="IDA Pro 9.4 inside KasmVNC-powered XFCE desktop"
 
 # ── Install runtime deps for Qt6 / IDA + Python 3.11 (single layer) ──
 # ida-pro-mcp requires Python 3.11+. Ubuntu 22.04 ships 3.10.
+# Use Tencent mirrors for faster apt downloads from CN hosts.
 USER root
-RUN apt-get update && \
+RUN sed -i \
+        -e 's|http://archive.ubuntu.com/ubuntu/|https://mirrors.tencent.com/ubuntu/|g' \
+        -e 's|http://security.ubuntu.com/ubuntu/|https://mirrors.tencent.com/ubuntu/|g' \
+        -e 's|http://[a-z]*.archive.ubuntu.com/ubuntu/|https://mirrors.tencent.com/ubuntu/|g' \
+        /etc/apt/sources.list && \
+    apt-get update && \
     apt-get install -y --no-install-recommends \
         libxcb-cursor0 \
         libxcb-icccm4 \
