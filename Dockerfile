@@ -90,15 +90,23 @@ ENV QT_QPA_PLATFORM=xcb
 ENV DISPLAY=:1
 
 # ── Startup Hook ──────────────────────────────────────
+# Root entrypoint wrapper: fixes mount ownership before Kasm startup
+# (custom_startup.sh runs as uid 1000 and cannot chown).
+COPY --chown=1000:1000 resources/entrypoint.sh /dockerstartup/ida-entrypoint.sh
+RUN chmod +x /dockerstartup/ida-entrypoint.sh
 COPY --chown=1000:1000 resources/custom_startup.sh /dockerstartup/
 RUN chmod +x /dockerstartup/custom_startup.sh
+
+ENTRYPOINT ["/dockerstartup/ida-entrypoint.sh"]
 
 # ── Ensure workspace and config directories exist ─────
 RUN mkdir -p /home/kasm-user/.idapro /home/kasm-user/workspace && \
     chown -R 1000:1000 /home/kasm-user/.idapro /home/kasm-user/workspace
 
 # ── Final State ────────────────────────────────────────
-USER 1000
+# Start as root so the entrypoint can chown mounts / run idapyswitch;
+# it drops back to uid 1000 before handing off to the Kasm startup chain.
+USER root
 WORKDIR /home/kasm-user/workspace
 
 EXPOSE 6901 8745
