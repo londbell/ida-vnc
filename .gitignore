@@ -5,8 +5,8 @@
 docs/superpowers/
 
 
-# IDA installer (not in repo)
-downloads/*.run
+# IDA installer / license / patched binaries (never in repo)
+downloads/
 
 # Build artifacts
 *.tar

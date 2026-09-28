@@ -17,4 +17,4 @@ services:
 
     volumes:
       - ${WORKSPACE_HOST_PATH:-~/IDA-workspace}:/home/kasm-user/workspace
-      - ${IDA_HEXLIC_HOST_PATH:-~/ida.hexlic}:/home/kasm-user/.idapro/ida.hexlic:ro
+      - ${IDA_CONFIG_HOST_PATH:-~/IDA-config}:/home/kasm-user/.idapro

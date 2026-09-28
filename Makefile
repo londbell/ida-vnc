@@ -20,7 +20,7 @@ MCP_PORT        ?= 8745
 VNC_PASSWORD    ?= changeme
 
 # Local paths for runtime mounts (override in .env)
-IDA_HEXLIC_PATH ?= $(HOME)/ida.hexlic
+IDA_CONFIG_PATH ?= $(HOME)/IDA-config
 WORKSPACE_PATH  ?= $(HOME)/IDA-workspace
 IDA_INSTALLER   ?= downloads/ida-pro_94_x64linux.run
 
@@ -42,6 +42,7 @@ build:
 ## run — Start the container locally
 run:
 	@echo "→ Starting container $(CONTAINER_NAME) ..."
+	@mkdir -p $(WORKSPACE_PATH) $(IDA_CONFIG_PATH)
 	@docker run -d \
 		--name $(CONTAINER_NAME) \
 		--hostname ida-vnc \
@@ -50,7 +51,7 @@ run:
 		-e VNC_PW=$(VNC_PASSWORD) \
 		-e HOME=/home/kasm-user \
 		-v $(WORKSPACE_PATH):/home/kasm-user/workspace \
-		-v $(IDA_HEXLIC_PATH):/home/kasm-user/.idapro/ida.hexlic:ro \
+		-v $(IDA_CONFIG_PATH):/home/kasm-user/.idapro \
 		$(IMAGE_TAG) \
 		|| echo "Container already running or failed to start. Check with 'make logs'"
 

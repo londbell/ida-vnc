@@ -5,7 +5,8 @@ FROM kasmweb/core-ubuntu-jammy:1.14.0
 
 LABEL description="IDA Pro 9.4 inside KasmVNC-powered XFCE desktop"
 
-# ── Install runtime dependencies for Qt6 / IDA ────────
+# ── Install runtime deps for Qt6 / IDA + Python 3.11 (single layer) ──
+# ida-pro-mcp requires Python 3.11+. Ubuntu 22.04 ships 3.10.
 USER root
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -13,45 +14,44 @@ RUN apt-get update && \
         libxcb-icccm4 \
         libxkbcommon-x11-0 \
         libxcb-keysyms1 \
-        libxcb-util1 && \
-    rm -rf /var/lib/apt/lists/*
-
-# ── Install IDA Pro ───────────────────────────────────
-# Installer must be staged at build/downloads/ before docker build
-USER root
-
-COPY downloads/ida-pro_94_x64linux.run /tmp/ida.run
-
-RUN chmod +x /tmp/ida.run && \
-    /tmp/ida.run --mode unattended --prefix /opt/ida-pro && \
-    rm -f /tmp/ida.run && \
-    chown -R 1000:1000 /opt/ida-pro
-
-# ── Install Python 3.11+ for ida-pro-mcp ──────────────
-# ida-pro-mcp requires Python 3.11 or higher. Ubuntu 22.04 ships 3.10.
-USER root
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends software-properties-common && \
+        libxcb-util1 \
+        software-properties-common && \
     add-apt-repository -y ppa:deadsnakes/ppa && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
         python3.11 \
-        python3.11-dev \
         python3.11-venv \
         python3.11-distutils && \
     rm -rf /var/lib/apt/lists/*
+
+# ── Install IDA Pro ───────────────────────────────────
+# Installer must be staged at downloads/ida-pro_94_x64linux.run before docker build.
+# Requires BuildKit (Docker 23+ default). The installer is bind-mounted during
+# the RUN step only, so it never bloats a persistent image layer (~600MB saved).
+#
+# Optional: place replacement files (e.g. patched *.so) under downloads/overrides/
+# mirroring the /opt/ida-pro layout — they are copied over after installation.
+USER root
+RUN --mount=type=bind,source=downloads,target=/mnt/downloads \
+    set -eux; \
+    chmod +x /mnt/downloads/ida-pro_94_x64linux.run; \
+    /mnt/downloads/ida-pro_94_x64linux.run --mode unattended --prefix /opt/ida-pro; \
+    if [ -d /mnt/downloads/overrides ]; then \
+        cp -a /mnt/downloads/overrides/. /opt/ida-pro/; \
+    fi; \
+    chown -R 1000:1000 /opt/ida-pro
 
 # Point IDA Pro / idalib to Python 3.11
 RUN /opt/ida-pro/idapyswitch -s /usr/lib/x86_64-linux-gnu/libpython3.11.so.1.0
 
 # ── Install uv and ida-pro-mcp ────────────────────────
 USER root
-# Use root's HOME so pip/uv don't create root-owned files under /home/kasm-user
-ENV HOME=/root
-RUN python3.11 -m ensurepip && \
-    python3.11 -m pip install --upgrade pip && \
-    python3.11 -m pip install uv && \
-    uv pip install --system --python python3.11 \
+# Use root's HOME for this step only, so pip/uv don't create root-owned files
+# under /home/kasm-user (and don't leak HOME=/root into the runtime image).
+RUN HOME=/root python3.11 -m ensurepip && \
+    HOME=/root python3.11 -m pip install --upgrade pip && \
+    HOME=/root python3.11 -m pip install --no-cache-dir uv && \
+    HOME=/root uv pip install --system --python python3.11 \
         git+https://github.com/mrexodia/ida-pro-mcp.git
 
 # ── Desktop Integration ────────────────────────────────
