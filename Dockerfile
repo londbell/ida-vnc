@@ -26,6 +26,7 @@ RUN sed -i \
     apt-get update && \
     apt-get install -y --no-install-recommends \
         python3.11 \
+        libpython3.11 \
         python3.11-venv \
         python3.11-distutils && \
     rm -rf /var/lib/apt/lists/*
@@ -40,25 +41,36 @@ RUN sed -i \
 USER root
 RUN --mount=type=bind,source=downloads,target=/mnt/downloads \
     set -eux; \
-    chmod +x /mnt/downloads/ida-pro_94_x64linux.run; \
-    /mnt/downloads/ida-pro_94_x64linux.run --mode unattended --prefix /opt/ida-pro; \
+    cp /mnt/downloads/ida-pro_94_x64linux.run /tmp/ida.run; \
+    chmod +x /tmp/ida.run; \
+    /tmp/ida.run --mode unattended --prefix /opt/ida-pro; \
     if [ -d /mnt/downloads/overrides ]; then \
         cp -a /mnt/downloads/overrides/. /opt/ida-pro/; \
     fi; \
+    rm -f /tmp/ida.run; \
     chown -R 1000:1000 /opt/ida-pro
 
 # Point IDA Pro / idalib to Python 3.11
 RUN /opt/ida-pro/idapyswitch -s /usr/lib/x86_64-linux-gnu/libpython3.11.so.1.0
 
 # ── Install uv and ida-pro-mcp ────────────────────────
+# ida-pro-mcp is installed from a local clone at downloads/ida-pro-mcp
+# (gitignored) — the build host may not have access to github.com.
+# PyPI traffic goes through the Tsinghua mirror for CN hosts.
 USER root
 # Use root's HOME for this step only, so pip/uv don't create root-owned files
 # under /home/kasm-user (and don't leak HOME=/root into the runtime image).
-RUN HOME=/root python3.11 -m ensurepip && \
-    HOME=/root python3.11 -m pip install --upgrade pip && \
-    HOME=/root python3.11 -m pip install --no-cache-dir uv && \
+ARG PYPI_MIRROR=https://pypi.tuna.tsinghua.edu.cn/simple
+RUN --mount=type=bind,source=downloads,target=/mnt/downloads \
+    set -eux; \
+    cp -a /mnt/downloads/ida-pro-mcp /tmp/ida-pro-mcp; \
+    HOME=/root python3.11 -m ensurepip && \
+    HOME=/root python3.11 -m pip install --no-cache-dir -i ${PYPI_MIRROR} --upgrade pip && \
+    HOME=/root python3.11 -m pip install --no-cache-dir -i ${PYPI_MIRROR} uv && \
     HOME=/root uv pip install --system --python python3.11 \
-        git+https://github.com/mrexodia/ida-pro-mcp.git
+        --index-url ${PYPI_MIRROR} \
+        /tmp/ida-pro-mcp; \
+    rm -rf /tmp/ida-pro-mcp
 
 # ── Desktop Integration ────────────────────────────────
 COPY --chown=1000:1000 resources/ida-pro.desktop \
