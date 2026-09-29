@@ -72,6 +72,12 @@ RUN --mount=type=bind,source=downloads,target=/mnt/downloads \
         /tmp/ida-pro-mcp; \
     rm -rf /tmp/ida-pro-mcp
 
+# ── Install IDA's idalib Python bindings ──────────────
+# idalib-mcp imports `idapro`, which ships as a wheel inside IDA's install
+# dir (not on PyPI). Install it into the system python3.11.
+RUN IDADIR=/opt/ida-pro python3.11 -m pip install --no-cache-dir \
+        /opt/ida-pro/idalib/python/idapro-*.whl
+
 # ── Desktop Integration ────────────────────────────────
 COPY --chown=1000:1000 resources/ida-pro.desktop \
      /home/kasm-user/Desktop/ida-pro.desktop
@@ -86,6 +92,7 @@ RUN mkdir -p /home/kasm-user/.local/share/applications && \
 
 # ── Environment ────────────────────────────────────────
 ENV PATH="/opt/ida-pro:${PATH}"
+ENV IDADIR=/opt/ida-pro
 ENV QT_QPA_PLATFORM=xcb
 ENV DISPLAY=:1
 

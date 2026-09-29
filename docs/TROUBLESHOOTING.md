@@ -99,6 +99,21 @@ docker inspect kasmweb/core-ubuntu-jammy:1.14.0 \
 
 **解法**：`USER root` + entrypoint 内部降权（见第 9 条）。诊断时先看 `docker inspect <c> --format '{{json .Config.Entrypoint}}'` 确认跑的是不是新镜像。
 
+### 12. `idalib` Python 绑定缺失 → MCP 握手能过但调用会炸
+
+**现象**：`python3.11 -c "import idalib"` 报 ModuleNotFoundError；MCP 握手正常但工具不可用。
+
+**原因**：`idapro`/`idalib` 绑定不在 PyPI 上，是 IDA 安装目录 `/opt/ida-pro/idalib/python/idapro-*.whl` 里自带的 wheel，需要 pip 安装到 Python 环境。`idalib-mcp` 懒加载它，所以握手阶段不报错。
+
+**解法**：Dockerfile 构建时执行
+`RUN IDADIR=/opt/ida-pro python3.11 -m pip install /opt/ida-pro/idalib/python/idapro-*.whl`
+
+### 13. `IDADIR` 未设置 → idapro 导入失败
+
+**现象**：`ImportError: Cannot load IDA library file libidalib.so ... IDADIR environment variable is not set`。
+
+**解法**：镜像 ENV 里加 `ENV IDADIR=/opt/ida-pro`。
+
 ---
 
 ## 教训（vibe coding 复盘）
